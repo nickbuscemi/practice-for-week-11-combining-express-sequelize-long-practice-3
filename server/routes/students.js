@@ -10,20 +10,20 @@ const { Op } = require("sequelize");
 // get /students
 router.get('/', async (req, res, next) => {
     let errorResult = { errors: [], count: 0, pageCount: 0 };
-
+    
     // Phase 2A: Use query params for page & size
     // Your code here
     try {
         let page = parseInt(req.query.page);
         let size = parseInt(req.query.size);
-        const where = {};
-
-        
 
         // Phase 2B (optional): Special case to return all students (page=0, size=0)
         if (!req.query.page || page === 0 || !req.query.size || size === 0) {
             const allStudents = await Student.findAll();
-            return res.json(allStudents);
+            return res.json({
+                rows: allStudents,
+                page: 1
+            });
         }
         
         // Check if page and size are valid numbers and within the expected range
@@ -39,14 +39,11 @@ router.get('/', async (req, res, next) => {
         // Phase 2B: Calculate limit and offset
         const offset = (page - 1) * size;
 
-        const students = await Student.findAll({
-            limit: size,
-            offset: offset
-        });
-        res.json(students)
-    } catch (error) {
-        next(error);
-    }
+        //const students = await Student.findAll({
+            //limit: size,
+            //offset: offset
+        //});
+        
 
     // Phase 4: Student Search Filters
     /*
@@ -92,9 +89,7 @@ router.get('/', async (req, res, next) => {
                 }
         */
     // Your code here
-
     let result = {};
-
     // Phase 3A: Include total number of results returned from the query without
         // limits and offsets as a property of count on the result
         // Note: This should be a new query
@@ -103,7 +98,9 @@ router.get('/', async (req, res, next) => {
         attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
         where,
         // Phase 1A: Order the Students search results
-        order: [['lastName','ASC'], ['firstName','ASC']]
+        order: [['lastName','ASC'], ['firstName','ASC']],
+        limit: size,
+        offset: offset
     });
 
     // Phase 2E: Include the page number as a key of page in the response data
@@ -117,6 +114,7 @@ router.get('/', async (req, res, next) => {
             }
         */
     // Your code here
+    result.page = page;
 
     // Phase 3B:
         // Include the total number of available pages for this query as a key
@@ -134,7 +132,10 @@ router.get('/', async (req, res, next) => {
         */
     // Your code here
 
-    res.json(result);
+    return res.json(result);
+    } catch (error) {
+        next(error);
+    }
 });
 
 // Export class - DO NOT MODIFY
