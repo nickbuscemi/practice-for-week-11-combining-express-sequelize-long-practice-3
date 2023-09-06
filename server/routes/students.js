@@ -13,12 +13,40 @@ router.get('/', async (req, res, next) => {
 
     // Phase 2A: Use query params for page & size
     // Your code here
+    try {
+        let page = parseInt(req.query.page);
+        let size = parseInt(req.query.size);
+        const where = {};
 
-    // Phase 2B: Calculate limit and offset
-    // Phase 2B (optional): Special case to return all students (page=0, size=0)
-    // Phase 2B: Add an error message to errorResult.errors of
+        
+
+        // Phase 2B (optional): Special case to return all students (page=0, size=0)
+        if (!req.query.page || page === 0 || !req.query.size || size === 0) {
+            const allStudents = await Student.findAll();
+            return res.json(allStudents);
+        }
+        
+        // Check if page and size are valid numbers and within the expected range
+        // Phase 2B: Add an error message to errorResult.errors of
         // 'Requires valid page and size params' when page or size is invalid
-    // Your code here
+        if (isNaN(page) || page < 0 || isNaN(size) || size > 200) {
+            errorResult.errors.push('Requires valid page and size params');
+            return res.status(400).json(errorResult);
+        }
+        // Set default values
+        page = page || 1
+        size = size || 10;
+        // Phase 2B: Calculate limit and offset
+        const offset = (page - 1) * size;
+
+        const students = await Student.findAll({
+            limit: size,
+            offset: offset
+        });
+        res.json(students)
+    } catch (error) {
+        next(error);
+    }
 
     // Phase 4: Student Search Filters
     /*
