@@ -42,6 +42,7 @@ router.get('/', async (req, res, next) => {
         attributes: [ 'id', 'name', 'studentLimit' ],
         where,
         // Phase 1B: Order the Classroom search results
+        order: [['name','ASC']],
     });
 
     res.json(classrooms);
