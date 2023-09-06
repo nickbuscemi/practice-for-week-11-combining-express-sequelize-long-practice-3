@@ -19,7 +19,10 @@ router.get('/', async (req, res, next) => {
 
         // Phase 2B (optional): Special case to return all students (page=0, size=0)
         if (!req.query.page || page === 0 || !req.query.size || size === 0) {
-            const allStudents = await Student.findAll();
+            const allStudents = await Student.findAll({
+                attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
+                order: [['lastName','ASC'], ['firstName','ASC']]
+            });
             return res.json({
                 rows: allStudents,
                 page: 1
@@ -94,6 +97,10 @@ router.get('/', async (req, res, next) => {
         // limits and offsets as a property of count on the result
         // Note: This should be a new query
 
+    const totalStudentCount = await Student.count({ where: where });
+     
+    result.count = totalStudentCount
+
     result.rows = await Student.findAll({
         attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
         where,
@@ -131,6 +138,7 @@ router.get('/', async (req, res, next) => {
             }
         */
     // Your code here
+    result.pageCount = Math.ceil(totalStudentCount / size);
 
     return res.json(result);
     } catch (error) {
