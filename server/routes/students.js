@@ -65,7 +65,8 @@ router.get('/', async (req, res, next) => {
         const offset = (page - 1) * size;
      
         // update the result object accordingy
-        result.count = await Student.count({ where: where }); // get total student count based on the where clause provided (example: all students where lefthanded is true)
+        const totalStudentCount = await Student.count({ where: where }); // get total student count based on the where clause provided (example: all students where lefthanded is true)
+        result.count = totalStudentCount;
 
         result.rows = await Student.findAll({
             attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
