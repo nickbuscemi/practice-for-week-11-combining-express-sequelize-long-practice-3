@@ -3,7 +3,8 @@ const express = require('express');
 const router = express.Router();
 
 // Import model(s)
-const { Classroom } = require('../db/models');
+const { Classroom, Supply, Student, StudentClassroom, sequelize } = require('../db/models');
+const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
 
 // List of classrooms
@@ -52,13 +53,23 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
     let classroom = await Classroom.findByPk(req.params.id, {
         attributes: ['id', 'name', 'studentLimit'],
-        // Phase 7:
-            // Include classroom supplies and order supplies by category then
-                // name (both in ascending order)
-            // Include students of the classroom and order students by lastName
-                // then firstName (both in ascending order)
-                // (Optional): No need to include the StudentClassrooms
-        // Your code here
+        
+        include: [
+            {
+                model: Supply,
+                as: 'supplies',
+                attributes: ['name','category','handed'],
+                order: [['category','ASC'], ['name','ASC']]
+            },
+            {
+                model: Student,
+                as: 'students',
+                attributes: ['id', 'firstName', 'lastName'],
+                through: { attributes: [] },
+                order: [['lastName','ASC'],['firstName','ASC']]
+            }
+        ],
+        
     });
 
     if (!classroom) {
@@ -66,16 +77,32 @@ router.get('/:id', async (req, res, next) => {
         res.send({ message: 'Classroom Not Found' });
     }
 
-    // Phase 5: Supply and Student counts, Overloaded classroom
-        // Phase 5A: Find the number of supplies the classroom has and set it as
-            // a property of supplyCount on the response
-        // Phase 5B: Find the number of students in the classroom and set it as
-            // a property of studentCount on the response
-        // Phase 5C: Calculate if the classroom is overloaded by comparing the
-            // studentLimit of the classroom to the number of students in the
-            // classroom
-        // Optional Phase 5D: Calculate the average grade of the classroom 
-    // Your code here
+    // Calculate the average student grade for this classroom
+    const avgGradeResult = await StudentClassroom.findAll({
+        attributes: [[Sequelize.fn('ROUND', Sequelize.fn('AVG', Sequelize.col('grade')), 2), 'avgGrade']],
+        where: { classroomId: req.params.id },
+        raw: true
+    });
+
+    const avgGrade = avgGradeResult[0].avgGrade;
+
+    classroom = classroom.toJSON();
+    
+    // Set the supplyCount property onto the POJO
+    classroom.supplyCount = classroom.supplies.length;
+    classroom.studentCount = classroom.students.length;
+    classroom.avgGrade = avgGrade;
+
+    // You can delete the supplies property if you don't want to send the list of supplies in the response
+    delete classroom.supplies;
+    delete classroom.students;
+    
+    // check if class is overloaded
+    if (classroom.studentLimit < classroom.studentCount) { 
+        classroom.overloaded = true;
+    } else {
+        classroom.overloaded = false;
+    }
 
     res.json(classroom);
 });

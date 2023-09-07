@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       Classroom.hasMany(models.StudentClassroom);
       Classroom.belongsToMany(
           models.Student, {
+            as: 'students',
             through: models.StudentClassroom,
             foreignKey: 'classroomId',
             otherKey: 'studentId'
@@ -21,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
       );
       Classroom.hasMany(
         models.Supply, {
+          as: 'supplies',
           foreignKey: 'classroomId',
           onDelete: 'CASCADE',
           hooks: true
