@@ -40,9 +40,9 @@ router.get('/', async (req, res, next) => {
             }
         }
         
-        // pagination
-        let page = parseInt(req.query.page);
-        let size = parseInt(req.query.size);
+        // pagination and set default values
+        let page = parseInt(req.query.page) || 1;
+        let size = parseInt(req.query.size) || 10;
 
         // Special case to return all students (page=0, size=0) or page and size params are not provided
         if (!req.query.page || page === 0 || !req.query.size || size === 0) {
@@ -61,18 +61,11 @@ router.get('/', async (req, res, next) => {
             return res.status(400).json(errorResult);
         }
 
-        // Set default values
-        page = page || 1
-        size = size || 10;
-
         //Calculate limit and offset
         const offset = (page - 1) * size;
-
-        // get total student count based on the where clause provided (example: all students where lefthanded is true)
-        const totalStudentCount = await Student.count({ where: where });
      
         // update the result object accordingy
-        result.count = totalStudentCount
+        result.count = await Student.count({ where: where }); // get total student count based on the where clause provided (example: all students where lefthanded is true)
 
         result.rows = await Student.findAll({
             attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
@@ -83,7 +76,6 @@ router.get('/', async (req, res, next) => {
         });
 
         result.page = page;
-
         result.pageCount = Math.ceil(totalStudentCount / size);
 
         // return the results in JSON format
