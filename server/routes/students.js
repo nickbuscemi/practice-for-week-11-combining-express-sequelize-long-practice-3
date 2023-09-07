@@ -44,7 +44,7 @@ router.get('/', async (req, res, next) => {
         let page = parseInt(req.query.page);
         let size = parseInt(req.query.size);
 
-        // Phase 2B (optional): Special case to return all students (page=0, size=0)
+        // Special case to return all students (page=0, size=0) or page and size params are not provided
         if (!req.query.page || page === 0 || !req.query.size || size === 0) {
             result.rows = await Student.findAll({
                 attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
@@ -53,35 +53,25 @@ router.get('/', async (req, res, next) => {
             });
             result.page = 1;
             return res.json(result);
-        }
-        /*if (!req.query.page || page === 0 || !req.query.size || size === 0) {
-            const allStudents = await Student.findAll({
-                attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
-                where: where,
-                order: [['lastName','ASC'], ['firstName','ASC']]
-            });
-            return res.json({
-                rows: allStudents,
-                page: 1
-            });
-        }*/
+        }   
         
         // Check if page and size are valid numbers and within the expected range
-        // Phase 2B: Add an error message to errorResult.errors of
-        // 'Requires valid page and size params' when page or size is invalid
         if (isNaN(page) || page < 0 || isNaN(size) || size > 200) {
             errorResult.errors.push('Requires valid page and size params');
             return res.status(400).json(errorResult);
         }
+
         // Set default values
         page = page || 1
         size = size || 10;
-        // Phase 2B: Calculate limit and offset
+
+        //Calculate limit and offset
         const offset = (page - 1) * size;
 
-
+        // get total student count based on the where clause provided (example: all students where lefthanded is true)
         const totalStudentCount = await Student.count({ where: where });
      
+        // update the result object accordingy
         result.count = totalStudentCount
 
         result.rows = await Student.findAll({
@@ -96,7 +86,9 @@ router.get('/', async (req, res, next) => {
 
         result.pageCount = Math.ceil(totalStudentCount / size);
 
+        // return the results in JSON format
         return res.json(result);
+
     } catch (error) {
         next(error);
     }
