@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import model(s)
-const { Classroom, Supply, Student, StudentClassroom, sequelize } = require('../db/models');
+const { Classroom, Supply, Student, StudentClassroom } = require('../db/models');
 const { Sequelize } = require('sequelize');
 const { Op } = require('sequelize');
 
@@ -11,38 +11,37 @@ const { Op } = require('sequelize');
 router.get('/', async (req, res, next) => {
     let errorResult = { errors: [], count: 0, pageCount: 0 };
 
-    // Phase 6B: Classroom Search Filters
-    /*
-        name filter:
-            If the name query parameter exists, set the name query
-                filter to find a similar match to the name query parameter.
-            For example, if name query parameter is 'Ms.', then the
-                query should match with classrooms whose name includes 'Ms.'
-
-        studentLimit filter:
-            If the studentLimit query parameter includes a comma
-                And if the studentLimit query parameter is two numbers separated
-                    by a comma, set the studentLimit query filter to be between
-                    the first number (min) and the second number (max)
-                But if the studentLimit query parameter is NOT two integers
-                    separated by a comma, or if min is greater than max, add an
-                    error message of 'Student Limit should be two integers:
-                    min,max' to errorResult.errors
-            If the studentLimit query parameter has no commas
-                And if the studentLimit query parameter is a single integer, set
-                    the studentLimit query parameter to equal the number
-                But if the studentLimit query parameter is NOT an integer, add
-                    an error message of 'Student Limit should be a integer' to
-                    errorResult.errors 
-    */
     const where = {};
 
-    // Your code here
+    // filter classrooms by teacher name
+    if (req.query.name) {
+        where.name = {
+            [Op.like]: `%${req.query.name}%`
+        }
+    };
+    // filter classrooms by a range of student limit
+    if (req.query.studentLimit && req.query.studentLimit.includes(',')) { //
+        const [min, max] = req.query.studentLimit.split(',').map(Number);
+        if (!isNaN(min) && !isNaN(max) && min <= max) {
+            where.studentLimit = {
+                [Op.between]: [min, max]
+            };
+        } else {
+            errorResult.errors.push('Student limit should be two numbers: min, max')
+        }
+    // filter classrooms by an exact student limit    
+    } else if (req.query.studentLimit) {
+        const exactLimit = parseInt(req.query.studentLimit);
+        if (!isNaN(exactLimit)) {
+            where.studentLimit = exactLimit;
+        } else {
+            errorResult.errors.push('Student limit should be an integer')
+        }
+    } ;
 
     const classrooms = await Classroom.findAll({
         attributes: [ 'id', 'name', 'studentLimit' ],
         where,
-        // Phase 1B: Order the Classroom search results
         order: [['name','ASC']],
     });
 
@@ -64,7 +63,7 @@ router.get('/:id', async (req, res, next) => {
             {
                 model: Student,
                 as: 'students',
-                attributes: ['id', 'firstName', 'lastName'],
+                attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
                 through: { attributes: [] },
                 order: [['lastName','ASC'],['firstName','ASC']]
             }
@@ -79,23 +78,24 @@ router.get('/:id', async (req, res, next) => {
 
     // Calculate the average student grade for this classroom
     const avgGradeResult = await StudentClassroom.findAll({
-        attributes: [[Sequelize.fn('ROUND', Sequelize.fn('AVG', Sequelize.col('grade')), 2), 'avgGrade']],
+        attributes: [[Sequelize.fn('ROUND', Sequelize.fn('AVG', Sequelize.col('grade')), 2), 'avgGrade']], // will find the average off all numbers in the grade column WHERE the clssroom id matched that parameters to the nearest hundredth
         where: { classroomId: req.params.id },
         raw: true
     });
 
+    // only use the key not the whole object
     const avgGrade = avgGradeResult[0].avgGrade;
 
     classroom = classroom.toJSON();
     
-    // Set the supplyCount property onto the POJO
+    // Set the supplyCount, studentCount, avgGrade property onto the POJO
     classroom.supplyCount = classroom.supplies.length;
     classroom.studentCount = classroom.students.length;
     classroom.avgGrade = avgGrade;
 
-    // You can delete the supplies property if you don't want to send the list of supplies in the response
-    delete classroom.supplies;
-    delete classroom.students;
+    // You can delete the supplies property if you don't want to send the list of supplies in the response (toggle delete on or off depending on whether you want to show students or supplies)
+    //delete classroom.supplies;
+    //delete classroom.students;
     
     // check if class is overloaded
     if (classroom.studentLimit < classroom.studentCount) { 
