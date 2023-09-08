@@ -3,8 +3,9 @@ const express = require('express');
 const router = express.Router();
 
 // Import model(s)
-const { Student } = require('../db/models');
+const { Student, Classroom, StudentClassroom } = require('../db/models');
 const { Op } = require("sequelize");
+const { Sequelize } = require('sequelize');
 
 // List
 // get /students
@@ -49,7 +50,23 @@ router.get('/', async (req, res, next) => {
             result.rows = await Student.findAll({
                 attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
                 where: where,
-                order: [['lastName','ASC'], ['firstName','ASC']]
+                include: [
+                    {
+                        model: Classroom,
+                        attributes: ['id', 'name'],
+                        through: {
+                            model: StudentClassroom,
+                            attributes: ['grade'],
+                        },
+                        required: true
+                    }
+                ],
+                order: [
+                    ['lastName','ASC'], 
+                    ['firstName','ASC'],
+                    [Classroom, StudentClassroom, 'grade', 'DESC'], // Ordering by the grade attribute in the StudentClassroom table
+                    [Classroom, 'name', 'ASC'],
+                ]
             });
             result.page = 1;
             return res.json(result);
@@ -71,7 +88,23 @@ router.get('/', async (req, res, next) => {
         result.rows = await Student.findAll({
             attributes: ['id', 'firstName', 'lastName', 'leftHanded'],
             where: where,
-            order: [['lastName','ASC'], ['firstName','ASC']],
+            include: [
+                {
+                    model: Classroom,
+                    attributes: ['id', 'name'],
+                    through: {
+                        model: StudentClassroom,
+                        attributes: ['grade'],
+                    },
+                    required: true
+                }
+            ],
+            order: [
+                ['lastName','ASC'], 
+                ['firstName','ASC'],
+                [Classroom, StudentClassroom, 'grade', 'DESC'], // Ordering by the grade attribute in the StudentClassroom table
+                [Classroom, 'name', 'ASC'],
+            ],
             limit: size,
             offset: offset
         });

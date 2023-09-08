@@ -12,8 +12,9 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       Supply.belongsTo(
-        models.Classroom,
-        { foreignKey: 'classroomId' }
+        models.Classroom,{
+          foreignKey: 'classroomId' 
+        }
       );
     }
   };

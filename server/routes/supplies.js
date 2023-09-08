@@ -3,14 +3,12 @@ const express = require('express');
 const router = express.Router();
 
 // Import model(s)
-const { Supply } = require('../db/models');
+const { Supply, Classroom } = require('../db/models');
+const { Sequelize } = require('sequelize');
 
 // List of supplies by category
 router.get('/category/:categoryName', async (req, res, next) => {
-    // Phase 1C:
-        // Find all supplies by category name
-        // Order results by supply's name then handed
-        // Return the found supplies as the response body
+    // Find all supplies by category name
     // Phase 8A:
         // Include Classroom in the supplies query results
         // Order nested classroom results by name first then by supply name
@@ -20,13 +18,18 @@ router.get('/category/:categoryName', async (req, res, next) => {
             where: {
                 category: req.params.categoryName
             },
+            include: [{
+                model: Classroom,
+                attributes: ['id', 'name']
+            }],
             order: [
+                [Sequelize.literal("SUBSTRING(classroom.name, INSTR(classroom.name, ' '))"), 'ASC'], // orders by last name alphebetically by skipping the prefix mr or ms
                 ['name','ASC'],
                 ['handed','ASC']
             ]
         });
         res.json(supplies);
-        
+
     } catch (error) {
         next(error);
     }
